@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Mohammad AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* System-level Auto light and dark adaptive theme layer mappings */
+        :root { 
+            --bg-main: #131314; 
+            --bg-surface: #1e1e20; 
+            --text-main: #e3e3e3; 
+            --border-color: #303134; 
+            --bubble-user: #2a2a2c; 
+            --input-bg: #131314; 
+        }
+        
+        @media (prefers-color-scheme: light) {
+            :root { 
+                --bg-main: #f0f4f9; 
+                --bg-surface: #ffffff; 
+                --text-main: #1f1f1f; 
+                --border-color: #e5e7eb; 
+                --bubble-user: #e9eef6; 
+                --input-bg: #f0f4f9; 
+            }
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-main); 
+            color: var(--text-main); 
+            -webkit-tap-highlight-color: transparent; 
+            transition: background 0.2s, color 0.2s; 
+        }
+        
+        .surface-node { 
+            background-color: var(--bg-surface); 
+            border-color: var(--border-color); 
+        }
+        
+        .gemini-gradient { 
+            background: linear-gradient(74deg, #4285f4 0%, #9b72cb 30%, #d96570 70%); 
+        }
+        
+        .chat-container::-webkit-scrollbar { 
+            width: 4px; 
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb { 
+            background-color: var(--border-color); 
+            border-radius: 99px; 
+        }
+        
+        .user-bubble { 
+            background-color: var(--bubble-user); 
+            max-width: 85%; 
+            border-radius: 1.25rem; 
+            padding: 0.85rem 1.1rem; 
+            font-size: 15px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+            word-wrap: break-word; 
+            color: var(--text-main); 
+        }
+        
+        /* Prevent choppy text streaming updates inside code wrappers */
+        .ai-text-node pre { 
+            background-color: #0f0f10; 
+            border: 1px solid #2d2d30; 
+            padding: 1rem; 
+            border-radius: 0.75rem; 
+            margin: 0.75rem 0; 
+            overflow-x: auto; 
+            font-family: 'JetBrains Mono', monospace; 
+            font-size: 13px; 
+            position: relative; 
+            color: #e3e3e3; 
+        }
+        
+        .ai-text-node code { 
+            background-color: rgba(66,133,244,0.15); 
+            padding: 0.1rem 0.3rem; 
+            border-radius: 0.25rem; 
+            font-family: 'JetBrains Mono', monospace; 
+            font-size: 13px; 
+        }
+        
+        .gemini-shimmer { 
+            height: 12px; 
+            border-radius: 4px; 
+            background: linear-gradient(90deg, #2a2b2c 25%, #4c3b6b 50%, #2a2b2c 75%); 
+            background-size: 200% 100%; 
+            animation: shimmer 1.5s infinite linear; 
+        }
+        
+        @keyframes shimmer { 
+            0% { background-position: -200% 0; } 
+            100% { background-position: 200% 0; } 
+        }
+        
+        @media(max-width: 768px) { 
+            .mobile-sidebar { 
+                transform: translateX(-100%); 
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            } 
+            .mobile-sidebar.open { 
+                transform: translateX(0); 
+            } 
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex overflow-hidden select-none">
+
+    {% if is_login_route %}
+    <div class="h-full w-full flex items-center justify-center p-4 bg-[#131314]">
+        <div class="max-w-md w-full bg-[#1e1e20] border border-[#303134] rounded-[2rem] p-6 shadow-2xl">
+            <h1 class="text-3xl font-semibold mb-1 text-center text-white">Mohammad <span class="gemini-gradient text-transparent bg-clip-text font-bold">AI</span></h1>
+            <div class="form-wrapper mt-4">
+                <form method="POST" class="space-y-4">
+                    <input type="hidden" name="action" id="formAction" value="login">
+                    <input type="text" name="username" required placeholder="Workspace Username..." class="w-full bg-[#131314] text-white border border-[#303134] rounded-xl px-4 py-3 text-sm focus:outline-none"/>
+                    <div id="tokenField"><input type="text" name="token" id="tokenInput" placeholder="Security Key Token..." class="w-full bg-[#131314] text-white border border-[#303134] rounded-xl px-4 py-3 text-sm font-mono focus:outline-none"/></div>
+                    <button type="submit" class="w-full py-3.5 bg-gray-100 text-black font-semibold text-sm rounded-full">Launch Instance</button>
+                </form>
+                <div class="flex justify-between text-xs text-gray-400 mt-4 px-2"><span class="cursor-pointer hover:underline" onclick="toggleAuth('register')">Create Account profile</span><span class="cursor-pointer hover:underline" onclick="toggleAuth('login')">Existing token validation</span></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function toggleAuth(m) { document.getElementById('formAction').value = m; document.getElementById('tokenField').style.display = m === 'login' ? 'block' : 'none'; }
+    </script>
+
+    {% else %}
+    <div id="sidebarOverlay" onclick="toggleMobileSidebar()" class="fixed inset-0 bg-black/60 z-30 hidden"></div>
+
+    <aside id="sidebarNode" class="mobile-sidebar fixed md:static inset-y-0 left-0 w-[270px] surface-node border-r flex flex-col justify-between p-3 z-40 md:transform-none">
+        <div class="flex flex-col h-[calc(100%-80px)]">
+            <div class="flex items-center justify-between mb-4">
+                <a href="/" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 rounded-full py-2.5 px-4 text-xs font-medium text-white transition w-full justify-center shadow-md">
+                    <span>+ New Workspace</span>
+                </a>
+            </div>
+            <div class="flex space-x-1 p-1 bg-black/10 rounded-xl mb-4 text-xs font-medium">
+                <button onclick="switchMode('chat')" id="mode-chat-btn" class="flex-1 py-2 text-center rounded-lg surface-node shadow">Conversations</button>
+                <button onclick="switchMode('imagine')" id="mode-imagine-btn" class="flex-1 py-2 text-center rounded-lg text-gray-400">Image Maker</button>
+            </div>
+            <div class="text-[11px] font-bold text-gray-400 px-3 uppercase tracking-wider mb-2">History logs</div>
+            <div class="flex-1 overflow-y-auto space-y-1 pr-1 chat-container" id="sidebarThreadsBox">
+                {% for thread in threads %}
+                <div class="group flex items-center justify-between rounded-xl p-1.5 transition text-xs {% if thread.id == current_id %} bg-blue-500/10 text-blue-400 font-medium {% else %} text-gray-400 hover:bg-black/5 {% endif %}">
+                    <a href="/chat/{{ thread.id }}" class="flex items-center space-x-2.5 truncate w-full pr-2">
+                        <svg class="w-3.5 h-3.5 opacity-60 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                        <span class="truncate">{{ thread.title }}</span>
+                    </a>
+                    <button onclick="deleteConversationTrack(event, '{{ thread.id }}')" class="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-500 rounded transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="surface-node rounded-xl p-2 border flex items-center justify-between">
+            <div class="flex items-center space-x-2 overflow-hidden text-xs">
+                <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white shadow-inner">{{ user.username[:2].upper() }}</div>
+                <div class="flex flex-col truncate"><span class="font-medium truncate">{{ user.username }}</span></div>
+            </div>
+            <a href="/logout" class="p-1 text-gray-400 hover:text-red-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></a>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+        <header class="h-14 border-b border-black/10 surface-node flex items-center justify-between px-4 z-10 backdrop-blur-md">
+            <div class="flex items-center space-x-3">
+                <button onclick="toggleMobileSidebar()" class="md:hidden p-2 text-gray-400 hover:text-white transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+                <span class="text-md font-medium">Mohammad <span class="gemini-gradient text-transparent bg-clip-text font-semibold">AI</span></span>
+            </div>
+            <div class="text-[10px] font-mono surface-node px-2.5 py-1 rounded-full border text-gray-400">Node: {{ current_id }}</div>
+        </header>
+
+        <div id="chatInterfacePanel" class="flex-1 flex flex-col overflow-hidden h-full relative">
+            <div id="chatWindow" class="chat-container flex-1 overflow-y-auto p-4 md:p-12 space-y-6 pb-44 max-w-3xl w-full mx-auto flex flex-col z-10"></div>
+            
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-inherit via-inherit to-transparent pt-12 pb-6 px-3 z-20">
+                <div class="max-w-3xl mx-auto surface-node border rounded-3xl p-2 relative shadow-xl">
+                    <div id="sliderDrawer" class="hidden flex space-x-2 p-2 bg-black/5 rounded-2xl mb-2 overflow-x-auto">
+                        <div id="previewContainer" class="relative flex-shrink-0">
+                            <img id="imgPreview" class="h-16 w-16 object-cover rounded-xl shadow border border-black/20" src="" />
+                            <button onclick="clearImage()" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold shadow">×</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label class="p-2.5 text-gray-400 hover:text-blue-500 cursor-pointer rounded-full hover:bg-black/5 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375 0 11-.75 0 .375 0 01.75 0z" /></svg>
+                            <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="previewFile()">
+                        </label>
+                        <textarea id="userInput" rows="1" class="flex-1 bg-transparent border-0 resize-none placeholder-gray-400 focus:ring-0 focus:outline-none py-1.5 text-sm max-h-24" placeholder="Ask Mohammad AI..." oninput="autoExpandTextarea(this)" onkeydown="handleKeyPress(event)"></textarea>
+                        <button id="sendBtn" onclick="handleSend()" class="p-2.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg></button>
+                        <button id="stopBtn" onclick="handleStopInterrupt()" class="hidden p-2.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="imagineInterfacePanel" class="hidden flex-1 overflow-y-auto p-4 md:p-8 max-w-3xl w-full mx-auto flex flex-col space-y-6 pb-24">
+            <div class="surface-node border rounded-2xl p-4 shadow-lg">
+                <h2 class="text-sm font-semibold mb-2">Prototyping Image Canvas</h2>
+                <textarea id="imaginePromptInput" rows="3" class="w-full bg-black/5 border rounded-xl p-3 text-sm focus:outline-none placeholder-gray-500 resize-none" placeholder="Describe imagery blueprint structures..."></textarea>
+                <button id="generateImgBtn" onclick="runImageCompilation()" class="w-full mt-3 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium text-sm rounded-xl hover:opacity-95 transition">Compile Engine Canvas</button>
+            </div>
+            <div id="imagineOutputCanvas" class="w-full aspect-square surface-node border rounded-2xl flex items-center justify-center p-6 relative overflow-hidden shadow-inner">
+                <div id="imaginePlaceholder" class="text-gray-400 flex flex-col items-center text-xs"><span>Output placeholder channel</span></div>
+                <div id="imagineLoadingBlock" class="hidden flex flex-col items-center space-y-3"><div class="w-8 h-8 border-4 border-t-blue-500 border-r-transparent border-b-purple-500 border-l-transparent rounded-full animate-spin"></div></div>
+                <img id="imagineResultImg" class="hidden w-full h-full object-contain max-h-[70vh] rounded-xl" src="" />
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let threadId = parseInt("{{ current_id }}");
+        let currentImageBase64 = null, isProcessing = false, activeAbortController = null, lastSpawnedBubbleId = null;
+        let lastUserMessageTrack = ""; 
+
+        window.addEventListener('DOMContentLoaded', loadChatHistory);
+
+        function toggleMobileSidebar() { document.getElementById('sidebarNode').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('hidden'); }
+        function switchMode(m) { document.getElementById('chatInterfacePanel').classList.toggle('hidden', m !== 'chat'); document.getElementById('imagineInterfacePanel').classList.toggle('hidden', m !== 'imagine'); }
+        function autoExpandTextarea(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 96) + 'px'; }
+        function handleKeyPress(event) { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if(!isProcessing) handleSend(); } }
+
+        function copyRawResponseText(strEncoded) {
+            navigator.clipboard.writeText(atob(strEncoded));
+            alert("Response block extracted to clipboard!");
+        }
+
+        function parseMarkdown(t) {
+            let text = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            text = text.replace(/```([\s\S]*?)```/g, (m, c) => `<pre><code>${c.trim()}</code></pre>`);
+            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+            text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            return text;
+        }
+
+        async function loadChatHistory() {
+            const win = document.getElementById('chatWindow');
+            if (threadId === 0) {
+                win.innerHTML = `<div class="flex-1 flex flex-col justify-center items-start min-h-[45vh]"><h1 class="text-4xl font-medium mb-2"><span class="gemini-gradient text-transparent bg-clip-text font-bold">Hello, {{ user.username }}</span></h1><p class="text-sm text-gray-400">Ask a question or provide image traces to get started.</p></div>`;
+                return;
+            }
+            const res = await fetch(`/api/history/${threadId}`);
+            const data = await res.json();
+            win.innerHTML = "";
+            data.history.forEach(msg => renderStaticMessageBlock(msg.sender, msg.text, msg.image, msg.id));
+            win.scrollTop = win.scrollHeight;
+        }
+
+        function previewFile() {
+            const file = document.getElementById('fileInput').files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => { 
+                currentImageBase64 = reader.result; 
+                document.getElementById('imgPreview').src = reader.result; 
+                document.getElementById('sliderDrawer').classList.remove('hidden'); 
+            }
+            if (file) reader.readAsDataURL(file);
+        }
+
+        function clearImage() { currentImageBase64 = null; document.getElementById('sliderDrawer').classList.add('hidden'); document.getElementById('fileInput').value = ""; }
+
+        async function handleSend(forcedQuery = null) {
+            const inputField = document.getElementById('userInput');
+            const query = forcedQuery !== null ? forcedQuery : inputField.value.trim();
+            if (!query && !currentImageBase64) return;
+
+            lastUserMessageTrack = query; 
+            isProcessing = true;
+            document.getElementById('sendBtn').classList.add('hidden');
+            document.getElementById('stopBtn').classList.remove('hidden');
+            
+            if(document.querySelector('h1')) document.getElementById('chatWindow').innerHTML = "";
+            
+            if (forcedQuery === null) {
+                renderStaticMessageBlock("user", query, currentImageBase64, null);
+                inputField.value = ""; inputField.style.height = 'auto';
+            }
+            
+            const savedImg = currentImageBase64; clearImage();
+            lastSpawnedBubbleId = spawnWaveformShimmer();
+            activeAbortController = new AbortController();
+
+            try {
+                const res = await fetch(`/api/chat/${threadId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: query, image: savedImg }),
+                    signal: activeAbortController.signal
+                });
+                
+                const data = await res.json();
+                
+                if (res.status !== 200 || data.error || !data.response) {
+                    let errorText = data.error || "Generation error loop encountered.";
+                    if (typeof errorText === 'object') errorText = JSON.stringify(errorText);
+                    terminateShimmerWithError(lastSpawnedBubbleId, errorText);
+                    return;
+                }
+
+                streamTextOutput(lastSpawnedBubbleId, data.response, () => {
+                    if(data.new_thread_id && threadId === 0) window.location.href = `/chat/${data.new_thread_id}`;
+                });
+                
+            } catch (err) { 
+                if (err.name !== 'AbortError') {
+                    terminateShimmerWithError(lastSpawnedBubbleId, "Network pipeline dropped. Server connection failed."); 
+                } 
+            }
+            finally { isProcessing = false; document.getElementById('sendBtn').classList.remove('hidden'); document.getElementById('stopBtn').classList.add('hidden'); activeAbortController = null; }
+        }
+
+        function handleStopInterrupt() { if (activeAbortController) { activeAbortController.abort(); terminateShimmerWithError(lastSpawnedBubbleId, "Generation process stopped."); } }
+
+        async function triggerMessageEdit(msgId, existingText) {
+            const updated = prompt("Modify Message Prompt:", existingText);
+            if(updated && updated.trim() !== existingText) {
+                await fetch(`/api/edit-message/${msgId}`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ text: updated.trim() }) 
+                });
+                
+                await loadChatHistory();
+                handleSend(updated.trim());
+            }
+        }
+
+        async function deleteConversationTrack(e, targetId) {
+            e.preventDefault(); e.stopPropagation();
+            if(confirm("Permanently drop this log matrix?")) {
+                await fetch(`/api/delete-thread/${targetId}`, { method: 'POST' });
+                window.location.href = "/";
+            }
+        }
+
+        async function runImageCompilation() {
+            const pInput = document.getElementById('imaginePromptInput');
+            const promptStr = pInput.value.trim(); if(!promptStr) return;
+            document.getElementById('imaginePlaceholder').classList.add('hidden');
+            document.getElementById('imagineResultImg').classList.add('hidden');
+            document.getElementById('imagineLoadingBlock').classList.remove('hidden');
+
+            const res = await fetch('/api/generate-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: promptStr }) });
+            const data = await res.json();
+            document.getElementById('imagineLoadingBlock').classList.add('hidden');
+            if(data.image) {
+                document.getElementById('imagineResultImg').src = data.image;
+                document.getElementById('imagineResultImg').classList.remove('hidden');
+            } else { document.getElementById('imaginePlaceholder').classList.remove('hidden'); alert(data.error); }
+        }
+
+        function renderStaticMessageBlock(sender, text, imgData, msgId) {
+            const win = document.getElementById('chatWindow');
+            let b64Text = btoa(unescape(encodeURIComponent(text || "")));
+            
+            let layout = sender === "user" ? 
+                `<div class="flex items-start justify-end w-full group"><div class="flex flex-col items-end space-y-1 w-full"><div class="user-bubble">${imgData ? `<img src="${imgData}" class="max-h-48 w-auto rounded-lg mb-2" />` : ''}<p class="whitespace-pre-wrap">${text}</p></div>${msgId ? `<button onclick="triggerMessageEdit(${msgId}, atob('${b64Text}'))" class="text-[10px] opacity-0 group-hover:opacity-60 text-gray-400 hover:underline">Edit Prompt</button>` : ''}</div></div>` :
+                `<div class="flex items-start space-x-3 w-full"><div class="w-6 h-6 rounded-full gemini-gradient flex items-center justify-center font-bold text-[10px] text-white flex-shrink-0 mt-0.5 shadow">M</div><div class="flex-1 space-y-2"><p class="text-[10px] font-semibold text-gray-400 uppercase">Mohammad AI</p><div class="ai-text-node text-[15px]">${parseMarkdown(text)}</div><div class="flex items-center space-x-1 mt-1"><button onclick="copyRawResponseText('${b64Text}')" class="p-1.5 text-gray-400 hover:text-blue-500 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition" title="Copy Output Token"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></button><button onclick="handleSend(atob('${b64Text}'))" class="p-1.5 text-gray-400 hover:text-blue-500 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition" title="Regenerate Sequence"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18"/></svg></button></div></div></div>`;
+            
+            win.insertAdjacentHTML('beforeend', layout); win.scrollTop = win.scrollHeight;
+        }
+
+        function spawnWaveformShimmer() {
+            const win = document.getElementById('chatWindow');
+            const id = "shimmer-" + Date.now();
+            win.insertAdjacentHTML('beforeend', `<div id="${id}" class="flex items-start space-x-3 w-full"><div class="w-6 h-6 rounded-full gemini-gradient flex items-center justify-center font-bold text-[10px] text-white flex-shrink-0 mt-0.5">M</div><div class="flex-1 space-y-2 pt-0.5"><p class="text-[10px] font-semibold text-gray-400 uppercase">Mohammad AI</p><div class="space-y-2 container-shimmer-holder max-w-md"><div class="gemini-shimmer w-full"></div><div class="gemini-shimmer w-5/6"></div></div></div></div>`);
+            win.scrollTop = win.scrollHeight; return id;
+        }
+
+        function streamTextOutput(bubbleId, fullText, callback) {
+            const bubble = document.getElementById(bubbleId); if (!bubble) return;
+            let b64Text = btoa(unescape(encodeURIComponent(fullText)));
+            
+            bubble.querySelector('.flex-1').innerHTML = `<p class="text-[10px] font-semibold text-gray-400 uppercase">Mohammad AI</p><div class="ai-text-node text-[15px]"></div><div class="flex items-center space-x-1 mt-1 opacity-0 actions-row transition-opacity duration-300"><button onclick="copyRawResponseText('${b64Text}')" class="p-1.5 text-gray-400 hover:text-blue-500 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition" title="Copy Output"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></button><button id="regen-${bubbleId}" class="p-1.5 text-gray-400 hover:text-blue-500 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition" title="Regenerate Sequence"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18"/></svg></button></div>`;
+            
+            const textContainer = bubble.querySelector('.ai-text-node');
+            const words = fullText.split(/(\s+)/); let currentIndex = 0, combinedText = "";
+            const win = document.getElementById('chatWindow');
+
+            function dumpChunk() {
+                if (currentIndex < words.length) {
+                    combinedText += words[currentIndex]; 
+                    textContainer.innerHTML = parseMarkdown(combinedText);
+                    currentIndex++; win.scrollTop = win.scrollHeight; setTimeout(dumpChunk, 8);
+                } else {
+                    bubble.querySelector('.actions-row').classList.remove('opacity-0');
+                    let currentPromptInstance = lastUserMessageTrack;
+                    bubble.querySelector(`#regen-${bubbleId}`).onclick = () => {
+                        bubble.remove(); 
+                        handleSend(currentPromptInstance);
+                    };
+                    if(callback) callback();
+                }
+            }
+            dumpChunk();
+        }
+
+        function terminateShimmerWithError(bubbleId, errMsg) {
+            const bubble = document.getElementById(bubbleId);
+            if(bubble) {
+                let currentPromptInstance = lastUserMessageTrack;
+                let contentContainer = bubble.querySelector('.flex-1');
+                
+                contentContainer.innerHTML = `
+                    <div class="flex flex-col space-y-2 w-full max-w-2xl">
+                        <div class="text-red-400 text-xs font-mono bg-red-950/30 border border-red-900/60 p-4 rounded-xl whitespace-pre-wrap overflow-x-auto max-h-64 select-text">${errMsg}</div>
+                        <div class="flex pl-1">
+                            <button id="err-retry-${bubbleId}" class="p-2 text-gray-400 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition flex items-center space-x-1.5 text-xs font-medium" title="Retry Pipeline Execution">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18"/></svg>
+                                <span>Retry Prompt</span>
+                            </button>
+                        </div>
+                    </div>`;
+                    
+                bubble.querySelector(`#err-retry-${bubbleId}`).onclick = () => {
+                    bubble.remove(); 
+                    handleSend(currentPromptInstance);
+                };
+            }
+        }
+    </script>
+    {% endif %}
+
+</body>
+</html>
